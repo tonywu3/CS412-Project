@@ -96,7 +96,7 @@ with open('train.txt', 'r') as train_CSV:
         #TODO optimize or use another library to do this better, adds 4 seconds of processing time
         #Turn categorical values into numerical values for movie categories
         split_movie_items = movie_info_dict.get(curr_row[2])[1].split("|")
-        genre_list.append(split_movie_items)
+        #genre_list.append(split_movie_items)
         for category in movie_categories_list:
             item_to_append.append(int(category in split_movie_items))
 
@@ -134,6 +134,17 @@ conditional_probabilities( rating_info[:,2], p_occupation)
 
 p_year = {}
 conditional_probabilities( rating_info[:,3], p_year)
+
+p_genres = []
+column = 4
+for category in movie_categories_list:
+    p_category = {}
+    conditional_probabilities( rating_info[:, column], p_category)
+    p_genres.append(p_category)
+    column += 1
+del column
+
+
 
 #TODO calculate P(genre | class)
 '''
