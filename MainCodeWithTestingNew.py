@@ -108,9 +108,9 @@ ratings = predict(test_data)
 from sklearn import metrics
 print ("Accuracy:{0:.3f}".format(metrics.accuracy_score(test_ratings,ratings)))
 
-print(avg_rating)
-print(user_deviation[4557])
-print(movie_deviation[3067])
+print("average rating: {0}".format(avg_rating))
+#print(user_deviation[4557])
+#print(movie_deviation[3067])
 
 '''
 #TODO implement output
