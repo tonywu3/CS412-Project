@@ -8,7 +8,7 @@ from sklearn import tree
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 
 
-def clean_data(list_to_clean, gender_column=0, age_column=1, occupation_column=2, year_column=3):
+def clean_data(list_to_clean, gender_column=1, age_column=2, occupation_column=3, year_column=4):
 
     #Find majority gender
     genders = list_to_clean[:, gender_column]
@@ -91,7 +91,7 @@ with open('train.txt', 'r') as train_CSV:
     rating_info = []
     target_values = []
     for curr_row in training_reader:
-        item_to_append = user_info_dict.get(curr_row[1]) + movie_info_dict.get(curr_row[2])[0:1]
+        item_to_append = list(map(int, [curr_row[1]])) + user_info_dict.get(curr_row[1]) + movie_info_dict.get(curr_row[2])[0:1]
 
         #TODO optimize or use another library to do this better, adds 4 seconds of processing time
         #Turn categorical values into numerical values for movie categories
@@ -113,30 +113,36 @@ for value in set(target_values):
     p_class[value] = ( value_counter[value] / float(len(target_values)) )
 
 def conditional_probabilities(attribute_list, dictionary):
-    temp_list = [ target_values, attribute_list ]
+    temp_list = [ rating_info[:,0], target_values, attribute_list ]
     temp_arr = np.array(temp_list)
     temp_counter = Counter(map(tuple, temp_arr.T))
-    
+    ret_dict = {}
+    for i in set(rating_info[:,0]):
+        ret_dict[i] = {}
+        
     # P(attribute | class) = count(attribute | class) / count(class)
     for key in temp_counter.keys():
-        temp_counter[key] /= float(value_counter[key[0]])
-    dictionary.update(temp_counter)
-        
+        temp_counter[key] /= float(value_counter[key[1]])
+        ret_dict[key[0]][ (key[1], key[2]) ] = temp_counter[key]
+    #ret_dict format is ret_dict[userid] = rating, attribute
+    dictionary.update(ret_dict)
+    #dictionary.update(temp_counter)   
 
+# Male = 1, Female = 0
 p_gender = {}
-conditional_probabilities(rating_info[:,0], p_gender)
+conditional_probabilities(rating_info[:,1], p_gender)
 
 p_age = {}
-conditional_probabilities( rating_info[:,1], p_age)
+conditional_probabilities( rating_info[:,2], p_age)
 
 p_occupation = {}
-conditional_probabilities( rating_info[:,2], p_occupation)
+conditional_probabilities( rating_info[:,3], p_occupation)
 
 p_year = {}
-conditional_probabilities( rating_info[:,3], p_year)
+conditional_probabilities( rating_info[:,4], p_year)
 
 p_genres = []
-column = 4
+column = 5
 for category in movie_categories_list:
     p_category = {}
     conditional_probabilities( rating_info[:, column], p_category)
@@ -145,15 +151,14 @@ for category in movie_categories_list:
 del column
 
 
+def predict():
+    #given user-ID, movie-ID
+    
+    #get user-info from 
+    pass
+
 
 #TODO calculate P(genre | class)
-'''
-genre_enc = LabelEncoder()
-genre_enc.fit(movie_categories_list)
-genres = genre_enc.transform(movie_categories_list)
-'''
-p_genre = {}
-
 
 
 
