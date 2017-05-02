@@ -1,9 +1,23 @@
+#Compatibility with py2
+from __future__ import division
+from builtins import *
+
 import csv
 import numpy as np
 
+
 from collections import Counter
 
+def predict(test_array):
+    ratings = []
+    for item in test_array:
+        curr_score = avg_rating + user_deviation[int(np.asscalar(item[1]))] + movie_deviation[int(np.asscalar(item[2]))]
+        #print("user {}, movie {}, {} -> {}".format(item[1], item[2], curr_score, round(curr_score)))
+        ratings.append(str(int(round(curr_score))))
 
+    ratings = np.array(ratings)
+
+    return ratings
 
 #Beginning of code
 
@@ -46,7 +60,7 @@ with open('train.txt', 'r') as train_CSV:
 
 from sklearn.model_selection import train_test_split
 train, test = train_test_split(data_array, test_size=0.25)
-
+#train = data_array
 
 users = int(max(user_info_dict.keys(), key=int)) + 1
 movies = int(max(movie_info_dict.keys(), key=int)) + 1
@@ -58,9 +72,9 @@ user_ratings_count = [0 for i in range(users)]
 movie_ratings_count = [0 for i in range(movies)]
 
 for curr_row in train:
-    curr_user = int(curr_row[1])
-    curr_movie = int(curr_row[2])
-    curr_rating = int(curr_row[3])
+    curr_user = int(np.asscalar(curr_row[1]))
+    curr_movie = int(np.asscalar(curr_row[2]))
+    curr_rating = int(np.asscalar(curr_row[3]))
     user_ratings[curr_user] += curr_rating
     movie_ratings[curr_movie] += curr_rating
     user_ratings_count[curr_user] += 1
@@ -86,19 +100,42 @@ for i in range(movies):
     except:
         movie_deviation[i] = 0.0
 
+
+
 test_ratings = test[:, 3]
 test_data = test[:, :3]
-
-ratings = []
-for item in test_data:
-    curr_score = avg_rating + user_deviation[int(item[1])] + movie_deviation[int(item[2])]
-    ratings.append(str(int(round(curr_score, 0))))
-
-ratings = np.array(ratings)
-
-
+ratings = predict(test_data)
 from sklearn import metrics
 print ("Accuracy:{0:.3f}".format(metrics.accuracy_score(test_ratings,ratings)))
 
+print(avg_rating)
+print(user_deviation[4557])
+print(movie_deviation[3067])
 
+'''
 #TODO implement output
+transaction_IDs = []
+with open('test.txt', 'r') as test_CSV:
+    test_reader = csv.reader(test_CSV)
+
+    #First row contains the format of the data
+    test_format = next(test_reader)
+    print(test_format)
+    test_array = []
+    for curr_row in test_reader:
+        test_array.append(curr_row)
+        transaction_IDs.append(curr_row[0])
+    #test_array = np.array(data_array)
+
+#print(test_array[0])
+rating_predictions = predict(test_array)
+print(test_array[0])
+
+with open('new_output.txt', 'w') as output_prediction_file:
+        #Write header
+        output_prediction_file.write("Id,rating")
+        print(rating_predictions[0])
+
+        for i in range(len(transaction_IDs)):
+            output_prediction_file.write("\n{},{}".format(transaction_IDs[i], rating_predictions[i]))
+'''
