@@ -7,9 +7,11 @@ from itertools import product
 from sklearn import tree
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 
-
+avg_age = 0
+avg_yr = 0
 def clean_data(list_to_clean, gender_column=1, age_column=2, occupation_column=3, year_column=4):
-
+    global avg_age
+    global avg_yr
     #Find majority gender
     genders = list_to_clean[:, gender_column]
     data = Counter(genders)
@@ -29,7 +31,7 @@ def clean_data(list_to_clean, gender_column=1, age_column=2, occupation_column=3
     average_age = int(np.mean(list_to_clean[ages != 'N/A', age_column].astype(np.int)))
     #Replace missing ages with average age
     list_to_clean[list_to_clean[:, age_column] == 'N/A', age_column] = average_age
-
+    avg_age = str(average_age)
     #Replace missing occupations with -1
     list_to_clean[list_to_clean[:, occupation_column] == 'N/A', occupation_column] = -1
 
@@ -38,6 +40,7 @@ def clean_data(list_to_clean, gender_column=1, age_column=2, occupation_column=3
     average_year = int(np.mean(list_to_clean[years != 'N/A', year_column].astype(np.int)))
     #Replace missing years with average year
     list_to_clean[list_to_clean[:, year_column] == 'N/A', year_column] = average_year
+    avg_yr = str(average_year)
 
     return list_to_clean
 
@@ -112,7 +115,55 @@ value_counter = Counter(target_values)
 for value in set(target_values):
     p_class[value] = ( value_counter[value] / float(len(target_values)) )
 
-def conditional_probabilities(attribute_list, dictionary, colmn):
+common_gender = Counter(rating_info[:,1]).most_common(1)[0][0]
+for value in user_info_dict.values():
+    if value[0] == 'M':
+        value[0] = '1'
+    if value[0] == "F":
+        value[0] = '0'
+    if value[0] == "N/A":
+        value[0] = common_gender
+    if value[1] == "N/A":
+        value[1] = avg_age
+    if value[2] == "N/A":
+        value[2] = '-1'
+
+for value in movie_info_dict.values():
+    if value[0] == 'N/A':
+        value[0] = avg_yr
+        
+userid_set = list(set(rating_info[:,0]))
+def conditional_probabilities(attribute_list, dictionary, colmn, userormovie):
+    temp_list = [ rating_info[:,0], attribute_list, target_values ]
+    temp_arr = np.array(temp_list)
+    temp_counter = Counter(map(tuple,temp_arr.T))
+    
+    ret_dict = {}
+    
+    att_set = list(set(rating_info[:,colmn]))
+    #ats.append(att_set)
+    
+    for i in userid_set:
+        ret_dict[i] = {}
+    
+    conditions = [x for x in product(userid_set, att_set, sorted(p_class.keys()))]
+    #cdl.append(conditions)
+    
+    for c in conditions:
+        #Avoid 0 probability by +1 to all counts
+        if userormovie == 'user':
+            if c[1] == user_info_dict[c[0]][colmn-1]:
+                ret_dict[c[0]].update( {(c[1],c[2]): (temp_counter[c]+1)/ float(value_counter[c[2]]) } )
+        if userormovie == 'movie':
+            try:
+                if c[1] == movie_info_dict[c[0]][0]:
+                    ret_dict[c[0]].update( {(c[1],c[2]): (temp_counter[c]+1)/ float(value_counter[c[2]]) } )
+            except KeyError:
+                ret_dict[c[0]].update( {('-1', '-1'): 1.} )
+                
+    dictionary.update(ret_dict)
+        
+    '''
     if(colmn != 4):
         temp_list = [ rating_info[:,0], target_values, attribute_list ]
     else:
@@ -138,74 +189,82 @@ def conditional_probabilities(attribute_list, dictionary, colmn):
     #    for key in temp_counter.keys():
     #        temp_counter[key] /= float(value_counter[key[0]])
     #    dictionary.update(temp_counter)   
+    '''
 
 # Male = 1, Female = 0
 p_gender = {}
-conditional_probabilities(rating_info[:,1], p_gender, 1)
+conditional_probabilities(rating_info[:,1], p_gender, 1, 'user')
 
 p_age = {}
-conditional_probabilities( rating_info[:,2], p_age, 2)
+conditional_probabilities( rating_info[:,2], p_age, 2, 'user')
 
 p_occupation = {}
-conditional_probabilities( rating_info[:,3], p_occupation, 3)
+conditional_probabilities( rating_info[:,3], p_occupation, 3, 'user')
 
 #TODO fix zero-probability for attribute
 p_userid = {}
 for u in user_info_dict.keys():
     #calculate gender classes for user
     p_userid[u] = {}
-    for i in range(1,6):
+    for i in p_class.keys():
         p_userid[u][i] = {}
-        running_prob = 1.
-        str_i = str(i)
-        if str_i in [key[0] for key,value in p_gender[u]]:
-            running_prob *= p_gender[u][(str_i,value)]
-        if str_i in [key[0] for key,value in p_occupation[u]]:
-            running_prob *= p_occupation[u][(str_i,value)]
-        if str_i in [key[0] for key,value in p_age[u]]:
-            running_prob *= p_age[u][(str_i,value)]
-        p_userid[u][i] = running_prob
+        running_prob = 1.        
+        #Gender
+            #Only select those probabilities that matches user gender
+        running_prob *= p_gender[u][ sorted(p_gender[u])[int(i)-1] ]
+        #Age
+            #Only select those probs that matches user age
+        running_prob *= p_age[u][ sorted(p_age[u])[int(i)-1] ]
+        #Occupation
+        running_prob *= p_occupation[u][ sorted(p_occupation[u])[int(i)-1] ]
+
+        p_userid[u][i] = running_prob        
+        
 
 
 p_year = {}
-conditional_probabilities( rating_info[:,4], p_year, 4)
-
+conditional_probabilities( rating_info[:,4], p_year, 4, 'movie')
 
 p_genres = {}
 column = 5
+
 for category in movie_categories_list:
+    p_genres[category] = {}
     p_category = {}
-    temp_list = [target_values, rating_info[:,column]]
-    temp_arr = np.array(temp_list)
-    temp_counter = Counter(map(tuple, temp_arr.T))
-
-    ret_dic = {}
-    for key in temp_counter.keys():
-        ret_dic[key] = temp_counter[key] / float(value_counter[key[0]])
-        #ret_dict[key[0]][ (key[1], key[2]) ] = temp_counter[key]
-
-    #p_category.update(pc)
-    p_genres[category] = ret_dic
-
-p_movieid = {}
-for m in movie_info_dict.keys():
-    if m not in set(p_year.keys()):
-        continue
-
-    split_categories = movie_info_dict[m][1].split("|")
-    p_movieid[m] = {}
-    for i in range(1,6):
-        running_prob = 1.
-        str_i = str(i)
-        if str_i in [key[0] for key,value in p_year[m]]:
-            running_prob *= p_year[m][(str_i, value)]
+    cat_list = [ rating_info[:,column], target_values ]
+    cat_list = np.array(cat_list)
+    cat_counter = Counter(map(tuple, cat_list.T))
+    
+    check_list = []
+    for i in sorted(p_class.keys()):
+        check_list.append ( ('1', i) )
+        p_category[i] = cat_counter[('1', i)] / float(value_counter[str(i)])
             
-        for g in split_categories:
-            if g == 'N/A':
-                continue
-            running_prob *= p_genres[g][(str_i,'1')]
+    p_genres[category].update(p_category)
+    column +=1
+    
+
+def predict(userid, movieid ):
+    predict_list = []
+    for i in sorted(p_class.keys()):
+        prob = 1.
+        prob *= p_userid[userid][i]
+        
+        if movieid in movie_info_dict.keys():
+            year_keys = sorted(p_year[ movie_info_dict[movieid][0] ].keys())
+            if( len(year_keys) > 1):
+                prob *= p_year[ movie_info_dict[movieid][0] ][year_keys[int(i)-1]]
+            #except IndexError:
+            #    print movieid
             
-        p_movieid[m][i] = running_prob
+            split_catlist = movie_info_dict[movieid][1].split("|")
+            for cat in split_catlist:
+                if(cat == "N/A"):
+                    continue
+                prob *= p_genres[cat][i]
+        predict_list.append(prob)
+        
+    return predict_list.index(max(predict_list)) + 1
 
 
 output = []
@@ -214,12 +273,9 @@ with open ("test.txt", "r") as test_CSV:
     test_format = next(test_reader)
     
     for curr_row in test_reader:
-        clslist = []
-        for cls in sorted(p_class.keys()):
-            cls = int(cls)
-            clslist.append( p_userid[str(curr_row[1])][cls] * p_movieid[str(curr_row[2])][cls])
-        
-        output.append(clslist.index(max(clslist)) +1)
+        output.append( [curr_row[0], predict(curr_row[1], curr_row[2])] )
+
+
 '''
 
 #Initial classification code:
