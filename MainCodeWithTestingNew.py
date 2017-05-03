@@ -42,7 +42,7 @@ def predict(test_array, user_deviation, movie_deviation):
         elif (curr_gender == 'F'):
             gender_offset = female_gender_diffs[curr_movie]
 
-        curr_score = avg_rating + user_deviation[curr_user] + movie_deviation[curr_movie] + gender_offset * .2
+        curr_score = avg_rating + user_deviation[curr_user] + movie_deviation[curr_movie] #+ gender_offset * .2
         #print("user {}, movie {}, {} -> {}".format(item[1], item[2], curr_score, round(curr_score)))
         ratings.append(str(int(round(curr_score))))
 
@@ -185,10 +185,11 @@ for i in range(movies):
 
     #try:
     #    ages = curr_movie_info[:, 2]
-
+'''
     print(avg_male_diff)
     print(avg_female_diff)
     print("\n")
+'''
     male_gender_diffs[i] = avg_male_diff
     female_gender_diffs[i] = avg_female_diff
 
