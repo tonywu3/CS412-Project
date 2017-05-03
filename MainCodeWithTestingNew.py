@@ -128,6 +128,7 @@ for curr_row in train:
     user_ratings_count[curr_user] += 1
     movie_ratings_count[curr_movie] += 1
 
+'''
     #Start with rating
     movie_item_to_append = []
     movie_item_to_append.append(curr_rating)
@@ -139,28 +140,29 @@ for curr_row in train:
 
 
     #Start with rating
-    #user_item_to_append = []
-    #user_item_to_append.append(curr_rating)
+    user_item_to_append = []
+    user_item_to_append.append(curr_rating)
     #Append movie year
-    #user_item_to_append.extend(movie_info_dict.get(curr_row[2])[0:1])
+    user_item_to_append.extend(movie_info_dict.get(curr_row[2])[0:1])
+
     #Turn categorical values into binary values for movie categories
     #and append them
-
-    #split_movie_items = movie_info_dict.get(curr_row[2])[1].split("|")
-    #for category in movie_categories_list:
-    #    user_item_to_append.extend(int(category in split_movie_items))
+    split_movie_items = movie_info_dict.get(curr_row[2])[1].split("|")
+    for category in movie_categories_list:
+        user_item_to_append.append(int(category in split_movie_items))
 
     #Add to user preference data for computation later
-    #user_preference_data[curr_user].append(user_item_to_append)
+    user_preference_data[curr_user].append(user_item_to_append)
 
 #movie_preference_data = np.array(movie_preference_data)
 #user_preference_data = np.array(user_preference_data)
-
+'''
 avg_rating = np.mean(train[:, 3].astype(np.float))
 
 user_deviation = calculate_deviations(user_ratings, user_ratings_count, avg_rating, users)
 movie_deviation = calculate_deviations(movie_ratings, movie_ratings_count, avg_rating, movies)
 
+'''
 male_gender_diffs = [0 for i in range(movies)]
 female_gender_diffs = [0 for i in range(movies)]
 
@@ -185,15 +187,15 @@ for i in range(movies):
 
     #try:
     #    ages = curr_movie_info[:, 2]
-'''
+
     print(avg_male_diff)
     print(avg_female_diff)
     print("\n")
-'''
+
     male_gender_diffs[i] = avg_male_diff
     female_gender_diffs[i] = avg_female_diff
 
-
+'''
 
 
 #curr_user_movie_info

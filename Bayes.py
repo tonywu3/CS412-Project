@@ -93,22 +93,31 @@ with open('train.txt', 'r') as train_CSV:
     #Generate array of (array containing all the user and movie info)
     rating_info = []
     target_values = []
-    for curr_row in training_reader:
-        item_to_append = list(map(int, [curr_row[1]])) + user_info_dict.get(curr_row[1]) + movie_info_dict.get(curr_row[2])[0:1]
-        movieid_list.append(curr_row[2])
-        #TODO optimize or use another library to do this better, adds 4 seconds of processing time
-        #Turn categorical values into numerical values for movie categories
-        split_movie_items = movie_info_dict.get(curr_row[2])[1].split("|")
-        #genre_list.append(split_movie_items)
-        for category in movie_categories_list:
-            item_to_append.append(int(category in split_movie_items))
 
-        rating_info.append(item_to_append)
-        target_values.append(curr_row[3])
+    tmp_data = []
+    for curr_row in training_reader:
+        tmp_data.append(curr_row)
+
+from sklearn.model_selection import train_test_split
+train, test = train_test_split(tmp_data, test_size=0.15)
+
+for curr_row in train:
+    item_to_append = list(map(int, [curr_row[1]])) + user_info_dict.get(curr_row[1]) + movie_info_dict.get(curr_row[2])[0:1]
+    movieid_list.append(curr_row[2])
+    #TODO optimize or use another library to do this better, adds 4 seconds of processing time
+    #Turn categorical values into numerical values for movie categories
+    split_movie_items = movie_info_dict.get(curr_row[2])[1].split("|")
+    #genre_list.append(split_movie_items)
+    for category in movie_categories_list:
+        item_to_append.append(int(category in split_movie_items))
+
+    rating_info.append(item_to_append)
+    target_values.append(curr_row[3])
 
 rating_info = clean_data(np.array(rating_info))
-
 target_values = np.array(target_values)
+
+
 
 p_class = {}
 value_counter = Counter(target_values)
@@ -131,24 +140,25 @@ for value in user_info_dict.values():
 for value in movie_info_dict.values():
     if value[0] == 'N/A':
         value[0] = avg_yr
-        
+
 userid_set = list(set(rating_info[:,0]))
+
 def conditional_probabilities(attribute_list, dictionary, colmn, userormovie):
     temp_list = [ rating_info[:,0], attribute_list, target_values ]
     temp_arr = np.array(temp_list)
     temp_counter = Counter(map(tuple,temp_arr.T))
-    
+
     ret_dict = {}
-    
+
     att_set = list(set(rating_info[:,colmn]))
     #ats.append(att_set)
-    
+
     for i in userid_set:
         ret_dict[i] = {}
-    
+
     conditions = [x for x in product(userid_set, att_set, sorted(p_class.keys()))]
     #cdl.append(conditions)
-    
+
     for c in conditions:
         #Avoid 0 probability by +1 to all counts
         if userormovie == 'user':
@@ -160,15 +170,15 @@ def conditional_probabilities(attribute_list, dictionary, colmn, userormovie):
                     ret_dict[c[0]].update( {(c[1],c[2]): (temp_counter[c]+1)/ float(value_counter[c[2]]) } )
             except KeyError:
                 ret_dict[c[0]].update( {('-1', '-1'): 1.} )
-                
+
     dictionary.update(ret_dict)
-        
+
     '''
     if(colmn != 4):
         temp_list = [ rating_info[:,0], target_values, attribute_list ]
     else:
         temp_list = [ movieid_list, target_values, attribute_list]
-        
+
     temp_arr = np.array(temp_list)
     temp_counter = Counter(map(tuple, temp_arr.T))
     #if( colmn != 4):
@@ -188,7 +198,7 @@ def conditional_probabilities(attribute_list, dictionary, colmn, userormovie):
     #else:
     #    for key in temp_counter.keys():
     #        temp_counter[key] /= float(value_counter[key[0]])
-    #    dictionary.update(temp_counter)   
+    #    dictionary.update(temp_counter)
     '''
 
 # Male = 1, Female = 0
@@ -208,7 +218,7 @@ for u in user_info_dict.keys():
     p_userid[u] = {}
     for i in p_class.keys():
         p_userid[u][i] = {}
-        running_prob = 1.        
+        running_prob = 1.
         #Gender
             #Only select those probabilities that matches user gender
         running_prob *= p_gender[u][ sorted(p_gender[u])[int(i)-1] ]
@@ -218,8 +228,8 @@ for u in user_info_dict.keys():
         #Occupation
         running_prob *= p_occupation[u][ sorted(p_occupation[u])[int(i)-1] ]
 
-        p_userid[u][i] = running_prob        
-        
+        p_userid[u][i] = running_prob
+
 
 
 p_year = {}
@@ -234,49 +244,62 @@ for category in movie_categories_list:
     cat_list = [ rating_info[:,column], target_values ]
     cat_list = np.array(cat_list)
     cat_counter = Counter(map(tuple, cat_list.T))
-    
+
     check_list = []
     for i in sorted(p_class.keys()):
         check_list.append ( ('1', i) )
         p_category[i] = cat_counter[('1', i)] / float(value_counter[str(i)])
-            
+
     p_genres[category].update(p_category)
     column +=1
-    
+
 
 def predict(userid, movieid ):
     predict_list = []
     for i in sorted(p_class.keys()):
         prob = 1.
         prob *= p_userid[userid][i]
-        
+
         if movieid in movie_info_dict.keys():
             year_keys = sorted(p_year[ movie_info_dict[movieid][0] ].keys())
             if( len(year_keys) > 1):
                 prob *= p_year[ movie_info_dict[movieid][0] ][year_keys[int(i)-1]]
             #except IndexError:
             #    print movieid
-            
+
             split_catlist = movie_info_dict[movieid][1].split("|")
             for cat in split_catlist:
                 if(cat == "N/A"):
                     continue
                 prob *= p_genres[cat][i]
         predict_list.append(prob)
-        
+
     return predict_list.index(max(predict_list)) + 1
 
+results = []
+for curr_row in test:
+    results.append(predict(curr_row[1], curr_row[2]))
+results = np.array(results).astype('str')
+test = np.array(test)
+print(results[1:20])
+print(test[1:20, 3])
 
+correct_items = test[:, 3]
+
+from sklearn import metrics
+print ("Accuracy:{0:.3f}".format(metrics.accuracy_score(results,correct_items)))
+
+'''
 output = []
 with open ("test.txt", "r") as test_CSV:
     test_reader = csv.reader(test_CSV)
     test_format = next(test_reader)
-    
+
     for curr_row in test_reader:
         output.append( [curr_row[0], predict(curr_row[1], curr_row[2])] )
 
 
-'''
+
 
 #Initial classification code:
 
@@ -332,4 +355,3 @@ with open('output.txt', 'w') as output_prediction_file:
     for i in range(len(rating_predictions)):
         output_prediction_file.write("\n{},{}".format(transaction_IDs[i], rating_predictions[i]))
 '''
-
