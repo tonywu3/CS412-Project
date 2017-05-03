@@ -149,6 +149,7 @@ conditional_probabilities( rating_info[:,2], p_age, 2)
 p_occupation = {}
 conditional_probabilities( rating_info[:,3], p_occupation, 3)
 
+#TODO fix zero-probability for attribute
 p_userid = {}
 for u in user_info_dict.keys():
     #calculate gender classes for user
@@ -205,27 +206,20 @@ for m in movie_info_dict.keys():
             running_prob *= p_genres[g][(str_i,'1')]
             
         p_movieid[m][i] = running_prob
-            
-'''
 
 
-#TODO access genre, year by movieID
-#TODO implement algorithm
-def predict():
-    #given user-ID, movie-ID
+output = []
+with open ("test.txt", "r") as test_CSV:
+    test_reader = csv.reader(test_CSV)
+    test_format = next(test_reader)
     
-    #get user-info from 
-    pass
-
-
-
-
-
-#conditional_probabilities( genres, p_genre)
-
-
-
-'''
+    for curr_row in test_reader:
+        clslist = []
+        for cls in sorted(p_class.keys()):
+            cls = int(cls)
+            clslist.append( p_userid[str(curr_row[1])][cls] * p_movieid[str(curr_row[2])][cls])
+        
+        output.append(clslist.index(max(clslist)) +1)
 '''
 
 #Initial classification code:
