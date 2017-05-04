@@ -354,6 +354,12 @@ if __name__ == "__main__":
     main()
 
 
+#Split data
+'''
+from sklearn.model_selection import train_test_split
+train, test = train_test_split(data_array, test_size=0.25)
+#train = data_array
+'''
 
 #Measure performance
 '''
@@ -363,10 +369,4 @@ ratings = predict(test_data, user_deviation, movie_deviation)
 ratings = np.array(ratings).astype('str')
 from sklearn import metrics
 print ("Accuracy:{0:.3f}".format(metrics.accuracy_score(test_ratings,ratings)))
-'''
-#Split data
-'''
-from sklearn.model_selection import train_test_split
-train, test = train_test_split(data_array, test_size=0.25)
-#train = data_array
 '''

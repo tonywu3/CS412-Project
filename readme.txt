@@ -1,7 +1,7 @@
 Programming language used: Python 3
 
-Required python3 packages:
-csv, numpy, sklearn
+Required python packages:
+csv, numpy, future(if using Python 2)
 
 How to run the program:
 The files "user.txt", "movie.txt", "train.txt", and "test.txt" must be in the same directory as the main code file.
